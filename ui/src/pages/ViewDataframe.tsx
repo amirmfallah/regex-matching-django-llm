@@ -199,6 +199,9 @@ export default function ViewDataframe() {
         <Button className="ml-2" onClick={() => navigate("/new")}>
           New
         </Button>
+        <Button className="ml-2" onClick={() => navigate("/")}>
+          View All
+        </Button>
       </div>
       <div className="rounded-md border">
         <Table>
