@@ -38,7 +38,7 @@ class DataframeRetrieveUpdateDestroy(generics.RetrieveUpdateDestroyAPIView):
       data_list = df.to_dict(orient='records')
       paginated_data = paginate_data(data_list, page, page_size)
 
-      # You could also include pagination metadata in your response
+      # Include pagination metadata in your response
       total_items = len(data_list)
       total_pages = (total_items // page_size) + (1 if total_items % page_size > 0 else 0)
       pagination_info = {
@@ -52,6 +52,11 @@ class DataframeRetrieveUpdateDestroy(generics.RetrieveUpdateDestroyAPIView):
       response = {**serializer.data, **pagination_info}
       # You might want to return the DataFrame as JSON in the response
       return Response(response, status=status.HTTP_200_OK)
+
     except Exception as e:
       # Handle file read error (file not found, not a CSV, etc.)
       ValidationError(detail='Cannot parse CSV file')
+
+  def patch(self, request, *args, **kwargs):
+    print(request.body)
+    return super().patch(request, *args, **kwargs)

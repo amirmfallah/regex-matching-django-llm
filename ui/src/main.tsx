@@ -7,6 +7,11 @@ import NewDataframe from "./pages/NewDataframe.tsx";
 import ViewDataframe from "./pages/ViewDataframe.tsx";
 import ListDataframe from "./pages/ListDataframe.tsx";
 import { Toaster } from "@/components/ui/toaster";
+import {
+  QueryClient,
+  QueryClientProvider,
+  useQuery,
+} from "@tanstack/react-query";
 
 const Dashboard = () => {
   return (
@@ -18,6 +23,8 @@ const Dashboard = () => {
     </div>
   );
 };
+
+const queryClient = new QueryClient();
 
 const router = createBrowserRouter([
   {
@@ -41,6 +48,8 @@ const router = createBrowserRouter([
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
-    <RouterProvider router={router} />
+    <QueryClientProvider client={queryClient}>
+      <RouterProvider router={router} />
+    </QueryClientProvider>
   </React.StrictMode>
 );
