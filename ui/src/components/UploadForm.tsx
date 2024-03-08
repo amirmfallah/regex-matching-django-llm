@@ -16,6 +16,7 @@ import { Input } from "@/components/ui/input";
 import { axiosAgent } from "@/lib/axios";
 import { useToast } from "@/components/ui/use-toast";
 import { useNavigate } from "react-router-dom";
+import { useState } from "react";
 
 const MAX_UPLOAD_SIZE = 1024 * 1024 * 3;
 const ACCEPTED_FILE_TYPES = ["text/csv"];
@@ -40,6 +41,7 @@ const formSchema = z.object({
 export function UploadForm() {
   const { toast } = useToast();
   const navigate = useNavigate();
+  const [loading, setLoading] = useState(false);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -59,11 +61,13 @@ export function UploadForm() {
     form.append("file", values.file[0]);
     axiosAgent
       .post("dataframe/", form)
-      .then(() => {
+      .then((res: any) => {
         toast({
           title: "File submitted",
           description: "Congrats!",
         });
+        setLoading(false);
+        navigate(`/${res.data?.id}`);
       })
       .catch((error) => {
         console.log(error);
@@ -91,6 +95,7 @@ export function UploadForm() {
             description: "Unknown error happened",
           });
         }
+        setLoading(false);
       });
   }
 
@@ -131,7 +136,9 @@ export function UploadForm() {
           )}
         />
 
-        <Button type="submit">Submit</Button>
+        <Button type="submit" disabled={loading}>
+          Submit
+        </Button>
       </form>
     </Form>
   );
