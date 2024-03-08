@@ -8,7 +8,6 @@ import {
   flexRender,
   getCoreRowModel,
   getFilteredRowModel,
-  getPaginationRowModel,
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table";
@@ -56,8 +55,10 @@ const DATA_TYPES = {
 export default function ViewDataframe() {
   const { pk } = useParams();
   const [page, setPage] = React.useState(1);
-  const [pageSize, setPageSize] = React.useState(10);
-  const [currentPage, setCurrentPage] = React.useState();
+  const [currentPage, setCurrentPage] = React.useState({
+    total_pages: 0,
+    current_page: 0,
+  });
   const [data, setData] = React.useState([]);
   const [columns, setColumns] = React.useState<ColumnDef<any>[]>([]);
   const [sorting, setSorting] = React.useState<SortingState>([]);
@@ -68,7 +69,7 @@ export default function ViewDataframe() {
     React.useState<VisibilityState>({});
   const [rowSelection, setRowSelection] = React.useState({});
   const navigate = useNavigate();
-
+  const pageSize = 10;
   const loadData = () => {
     const params = new URLSearchParams({
       page: page.toString(),
@@ -108,7 +109,7 @@ export default function ViewDataframe() {
                         onClick={() => updateDataType(_key, key, dtypes)}
                         className={_key == value ? "bg-slate-100" : ""}
                       >
-                        {DATA_TYPES[_key]}
+                        {_.get(DATA_TYPES, _key)}
                       </DropdownMenuItem>
                     ))}
                   </DropdownMenuContent>
@@ -138,7 +139,7 @@ export default function ViewDataframe() {
           description: "Congrats!",
         });
       })
-      .catch((e) => {
+      .catch(() => {
         toast({
           title: "Datatype update failed",
           description: `${columnKey} cannot be converted to ${label}`,

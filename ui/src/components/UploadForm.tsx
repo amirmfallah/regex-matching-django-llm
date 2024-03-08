@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -70,23 +69,11 @@ export function UploadForm() {
         navigate(`/${res.data?.id}`);
       })
       .catch((error) => {
-        console.log(error);
-        let errMessage = "";
-
         // Error handling when bad request happened caused by wrong or missing information
         if (error?.response?.status == 400) {
-          for (const [key, errs] of Object.entries(error?.response?.data)) {
-            errMessage +=
-              key +
-              ": " +
-              errs.reduce((last: string, curr: string) => {
-                return last + curr;
-              }, errMessage) +
-              " ";
-          }
           toast({
             title: "File submission failed",
-            description: errMessage,
+            description: "Bad Request",
           });
         } else {
           // Throwing unknown error when the error cannot be predictable
@@ -125,7 +112,7 @@ export function UploadForm() {
         <FormField
           control={form.control}
           name="file"
-          render={({ field }) => (
+          render={({}) => (
             <FormItem>
               <FormLabel>Speadsheet File</FormLabel>
               <FormControl>
