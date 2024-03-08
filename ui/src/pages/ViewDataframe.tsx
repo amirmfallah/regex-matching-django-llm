@@ -36,6 +36,7 @@ import {
 import { axiosAgent } from "@/lib/axios";
 import { useNavigate, useParams } from "react-router-dom";
 import { ScrollArea } from "@radix-ui/react-scroll-area";
+import { toast } from "@/components/ui/use-toast";
 
 const DATA_TYPES = {
   object: "Text",
@@ -55,7 +56,6 @@ export default function ViewDataframe() {
   const [page, setPage] = React.useState(1);
   const [pageSize, setPageSize] = React.useState(10);
   const [currentPage, setCurrentPage] = React.useState();
-
   const [data, setData] = React.useState([]);
   const [columns, setColumns] = React.useState<ColumnDef<any>[]>([]);
   const [sorting, setSorting] = React.useState<SortingState>([]);
@@ -67,7 +67,7 @@ export default function ViewDataframe() {
   const [rowSelection, setRowSelection] = React.useState({});
   const navigate = useNavigate();
 
-  React.useEffect(() => {
+  const loadData = () => {
     const params = new URLSearchParams({
       page: page.toString(),
       page_size: pageSize.toString(),
@@ -120,11 +120,29 @@ export default function ViewDataframe() {
         ]);
       }
     });
+  };
+
+  React.useEffect(() => {
+    loadData();
   }, [page, pageSize, pk]);
 
   const updateDataType = (label: string, columnKey: string, dtypes: any) => {
     _.set(dtypes, columnKey, label);
-    axiosAgent.patch(`dataframe/${pk}/`, { dtypes });
+    axiosAgent
+      .patch(`dataframe/${pk}/`, { dtypes })
+      .then(() => {
+        toast({
+          title: "Datatype successfully changed.",
+          description: "Congrats!",
+        });
+      })
+      .catch((e) => {
+        toast({
+          title: "Datatype update failed",
+          description: `${columnKey} cannot be converted to ${label}`,
+        });
+      });
+    loadData();
   };
 
   const table = useReactTable({
