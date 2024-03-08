@@ -12,5 +12,4 @@ class DataframeSerializer(serializers.ModelSerializer):
   def create(self, validated_data):
     df = pd.read_csv(validated_data['file'])
     validated_data['dtypes'] = infer_and_convert_data_types(df).dtypes.astype(str).to_dict()
-    print(validated_data)
     return super().create(validated_data)

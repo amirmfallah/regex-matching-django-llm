@@ -44,9 +44,11 @@ const DATA_TYPES = {
   int32: "Medium Number",
   int16: "Small Number",
   int8: "Extra Small Number",
+  float64: "Big Float",
+  float32: "Small Float",
   bool: "Boolean",
   "datetime64[ns]": "Date",
-  "timedelta[ns]": "Date with timezone",
+  "timedelta64[ns]": "Date with timezone",
   category: "Categorical",
   complex: "Complex",
 };

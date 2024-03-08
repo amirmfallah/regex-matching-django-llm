@@ -3,6 +3,15 @@ import pandas as pd
 
 def infer_and_convert_data_types(df):
     for col in df.columns:
+        # Skip columns with missing values for type inference
+        if df[col].isnull().all():
+            continue
+
+        # Convert to boolean if applicable
+        if set(df[col].dropna().unique()).issubset({True, False}):
+            df[col] = df[col].astype('bool')
+            continue
+
         # Attempt to convert to numeric first
         df_converted = pd.to_numeric(df[col], errors='coerce')
         if not df_converted.isna().all():  # If at least one value is numeric
@@ -21,13 +30,3 @@ def infer_and_convert_data_types(df):
             df[col] = pd.Categorical(df[col])
 
     return df
-
-# # Test the function with your DataFrame
-# df = pd.read_csv('sample_data.csv')
-# print("Data types before inference:")
-# print(df.dtypes)
-
-# df = infer_and_convert_data_types(df)
-
-# print("\nData types after inference:")
-# print(df.dtypes)
