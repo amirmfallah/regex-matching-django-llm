@@ -69,6 +69,10 @@ The frontend will be available at `http://localhost:8000/`.
    ```
    npm install
    ```
+3. Rename `.env.local.example` to `.env.local` and configure the api url:
+   ```
+   VITE_API_BASE=http://127.0.0.1:8000/
+   ```
 
 ### Running the Frontend
 
