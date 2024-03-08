@@ -1,0 +1,3 @@
+[build]
+builder = "nixpacks"
+buildCommand = "python manage.py makemigrations && python manage.py migrate"
