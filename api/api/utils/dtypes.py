@@ -82,7 +82,7 @@ def apply_types(df, dtypes):
             continue
 
         if type == 'timedelta64[ns]':
-            df[col] = pd.to_datetime(df[col], errors='coerce')
+            df[col] = pd.to_timedelta(df[col], errors='coerce')
             continue
 
         if type == 'bool':
