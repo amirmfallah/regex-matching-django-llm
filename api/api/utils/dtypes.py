@@ -60,4 +60,8 @@ def apply_types(df, dtypes):
             df[col] = df[col].astype('bool')
             continue
 
+        if type == 'category':
+            df[col] = pd.Categorical(df[col])
+            continue
+
     return df

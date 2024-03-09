@@ -54,6 +54,7 @@ export function UploadForm() {
 
   // Define a submit handler.
   function onSubmit(values: z.infer<typeof formSchema>) {
+    setLoading(true);
     // Creating form-data post request to send details of the dataframe to the backend
     const form = new FormData();
     form.append("title", values.title);
@@ -123,7 +124,11 @@ export function UploadForm() {
           )}
         />
 
-        <Button type="submit" disabled={loading}>
+        <Button
+          type="submit"
+          className="disabled:bg-gray-700"
+          disabled={loading}
+        >
           Submit
         </Button>
       </form>
