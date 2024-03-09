@@ -27,6 +27,7 @@ class DataframeRetrieveUpdateDestroy(generics.RetrieveUpdateDestroyAPIView):
   def retrieve(self, request, *args, **kwargs):
     instance = self.get_object()
     file_path = instance.file.path
+    print(file_path)
     serializer = DataframeSerializer(instance)
     try:
       # Get pagination parameters from the request
