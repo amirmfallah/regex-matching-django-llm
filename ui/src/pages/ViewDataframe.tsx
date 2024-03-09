@@ -39,10 +39,10 @@ import { toast } from "@/components/ui/use-toast";
 
 const DATA_TYPES = {
   object: "Text",
-  int64: "Big Number",
-  int32: "Medium Number",
-  int16: "Small Number",
-  int8: "Extra Small Number",
+  Int64: "Big Number",
+  Int32: "Medium Number",
+  Int16: "Small Number",
+  Int8: "Extra Small Number",
   float64: "Big Float",
   float32: "Small Float",
   bool: "Boolean",
@@ -53,12 +53,18 @@ const DATA_TYPES = {
 };
 
 export default function ViewDataframe() {
+  // Get dataframe's public key from query parameters
   const { pk } = useParams();
+
+  // Setup pagination states
   const [page, setPage] = React.useState(1);
   const [currentPage, setCurrentPage] = React.useState({
     total_pages: 0,
     current_page: 0,
   });
+  const pageSize = 10;
+
+  // Declare data table state
   const [data, setData] = React.useState([]);
   const [columns, setColumns] = React.useState<ColumnDef<any>[]>([]);
   const [sorting, setSorting] = React.useState<SortingState>([]);
@@ -69,7 +75,8 @@ export default function ViewDataframe() {
     React.useState<VisibilityState>({});
   const [rowSelection, setRowSelection] = React.useState({});
   const navigate = useNavigate();
-  const pageSize = 10;
+
+  // Load tables data from server
   const loadData = () => {
     const params = new URLSearchParams({
       page: page.toString(),
@@ -77,13 +84,15 @@ export default function ViewDataframe() {
     });
 
     axiosAgent.get(`dataframe/${pk}?${params}`).then((res) => {
-      setData(_.get(res.data, ["data"]));
+      setData(JSON.parse(_.get(res.data, ["data"])));
+      console.log(JSON.parse(_.get(res.data, ["data"])));
       setCurrentPage({
         current_page: res.data.current_page,
         total_pages: res.data.total_pages,
       });
       const dtypes = _.get(res.data, ["dtypes"]);
 
+      // Setup dynamic columns based on the dataframe
       setColumns([]);
       for (const [key, value] of Object.entries(dtypes)) {
         setColumns((columns) => [
@@ -103,6 +112,7 @@ export default function ViewDataframe() {
                   <DropdownMenuContent align="end">
                     <DropdownMenuLabel>Data Types</DropdownMenuLabel>
                     <DropdownMenuSeparator />
+                    {/* Handle data type change button event */}
                     {Object.keys(DATA_TYPES).map((_key, index) => (
                       <DropdownMenuItem
                         key={index}
@@ -125,6 +135,7 @@ export default function ViewDataframe() {
     });
   };
 
+  // Fetch table's data on component mount, and when pagination states change
   React.useEffect(() => {
     loadData();
   }, [page, pageSize, pk]);
@@ -134,6 +145,7 @@ export default function ViewDataframe() {
     axiosAgent
       .patch(`dataframe/${pk}/`, { dtypes })
       .then(() => {
+        loadData();
         toast({
           title: "Datatype successfully changed.",
           description: "Congrats!",
@@ -145,7 +157,6 @@ export default function ViewDataframe() {
           description: `${columnKey} cannot be converted to ${label}`,
         });
       });
-    loadData();
   };
 
   const table = useReactTable({
@@ -235,6 +246,8 @@ export default function ViewDataframe() {
                 >
                   {row.getVisibleCells().map((cell) => (
                     <TableCell key={cell.id}>
+                      {cell.getValue() === true ? "True" : ""}
+                      {cell.getValue() === false ? "False" : ""}
                       {flexRender(
                         cell.column.columnDef.cell,
                         cell.getContext()

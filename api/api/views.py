@@ -2,7 +2,7 @@ from django.shortcuts import render
 from rest_framework import viewsets, status, generics
 from .models import DataframeModel
 from .serializers import DataframeSerializer
-from .utils.dtypes import infer_and_convert_data_types
+from .utils.dtypes import infer_and_convert_data_types, apply_types
 from rest_framework.response import Response
 from rest_framework.exceptions import NotFound, ValidationError
 import pandas as pd
@@ -34,18 +34,18 @@ class DataframeRetrieveUpdateDestroy(generics.RetrieveUpdateDestroyAPIView):
 
       # Read the CSV file using Pandas
       df = pd.read_csv(file_path)
-
+      df = paginate_data(df, page, page_size)
 
       # Convert DataFrame to list of dicts and paginate
       parse_error = {"message": ""}
-      data_list = df.to_dict(orient='records')
       try:
-        data_list = df.astype(serializer.data['dtypes'], errors='raise').to_dict(orient='records')
-      except:
-        parse_error['message'] = 'Cannot parse to current data types. Please change types.'
+        data_list = apply_types(df, serializer.data['dtypes'])
+        data_list = data_list.to_json(orient='records', date_format='iso')
+        print(data_list)
+      except Exception as e:
+        data_list = df.to_json(orient='records')
+        parse_error['message'] = e
 
-
-      paginated_data = paginate_data(data_list, page, page_size)
 
       # Include pagination metadata in your response
       total_items = len(data_list)
@@ -55,7 +55,7 @@ class DataframeRetrieveUpdateDestroy(generics.RetrieveUpdateDestroyAPIView):
           'total_pages': total_pages,
           'current_page': page,
           'page_size': page_size,
-          'data': paginated_data
+          'data': data_list
       }
 
       response = {**serializer.data, **pagination_info, **parse_error}
@@ -69,6 +69,7 @@ class DataframeRetrieveUpdateDestroy(generics.RetrieveUpdateDestroyAPIView):
   def patch(self, request, *args, **kwargs):
     instance = self.get_object()
     file_path = instance.file.path
+    serializer = DataframeSerializer(instance)
 
     # Parse request body as JSON
     body = dict()
@@ -80,7 +81,7 @@ class DataframeRetrieveUpdateDestroy(generics.RetrieveUpdateDestroyAPIView):
 
     try:
       # Read the CSV file using Pandas
-      df = infer_and_convert_data_types(pd.read_csv(file_path))
+      df = apply_types(pd.read_csv(file_path), serializer.data['dtypes'])
     except Exception as e:
       # Handle file read error (file not found, not a CSV, etc.)
       raise ValidationError(detail='Cannot open dataset')
