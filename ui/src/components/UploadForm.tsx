@@ -18,7 +18,11 @@ import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 
 const MAX_UPLOAD_SIZE = 1024 * 1024 * 3;
-const ACCEPTED_FILE_TYPES = ["text/csv"];
+const ACCEPTED_FILE_TYPES = [
+  "text/csv",
+  "application/vnd.ms-excel",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+];
 
 const formSchema = z.object({
   title: z.string().min(2, {

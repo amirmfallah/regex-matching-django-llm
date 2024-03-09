@@ -2,7 +2,8 @@ from django.shortcuts import render
 from rest_framework import viewsets, status, generics
 from .models import DataframeModel
 from .serializers import DataframeSerializer
-from .utils.dtypes import infer_and_convert_data_types, apply_types
+from .utils.dtypes import apply_types
+from .utils.spreadsheets import open_file
 from rest_framework.response import Response
 from rest_framework.exceptions import NotFound, ValidationError
 import pandas as pd
@@ -33,7 +34,7 @@ class DataframeRetrieveUpdateDestroy(generics.RetrieveUpdateDestroyAPIView):
       page_size = int(request.query_params.get('page_size', 10))
 
       # Read the CSV file using Pandas
-      df = pd.read_csv(file_path)
+      df = open_file(file_path)
       total_items = len(df)
       df = paginate_data(df, page, page_size)
 
@@ -81,7 +82,7 @@ class DataframeRetrieveUpdateDestroy(generics.RetrieveUpdateDestroyAPIView):
 
     try:
       # Read the CSV file using Pandas
-      df = apply_types(pd.read_csv(file_path), serializer.data['dtypes'])
+      df = apply_types(open_file(file_path), serializer.data['dtypes'])
     except Exception as e:
       # Handle file read error (file not found, not a CSV, etc.)
       raise ValidationError(detail='Cannot open dataset')
