@@ -68,8 +68,9 @@ class DataframeRetrieveUpdateDestroy(generics.RetrieveUpdateDestroyAPIView):
       return Response(response, status=status.HTTP_200_OK)
 
     except Exception as e:
+      print(e)
       # Handle file read error (file not found, not a CSV, etc.)
-      raise ValidationError(detail='Cannot parse CSV file')
+      raise ValidationError(detail=e)
 
   def patch(self, request, *args, **kwargs):
     instance = self.get_object()
