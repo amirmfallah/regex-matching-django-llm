@@ -38,7 +38,7 @@ def infer_and_convert_data_types(df):
         try:
             df[col] = pd.to_datetime(df[col])
             continue
-        except (ValueError, TypeError):
+        except:
             pass
 
 
@@ -47,14 +47,14 @@ def infer_and_convert_data_types(df):
         try:
             df[col] = pd.to_timedelta(df[col])
             continue
-        except (ValueError, TypeError):
+        except:
             pass
 
         # Attempt to convert to complex
         try:
             df[col] = df[col].astype('complex128')
             continue
-        except (ValueError, TypeError):
+        except:
             pass
 
         # Check if the column should be categorical
