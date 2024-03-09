@@ -43,7 +43,6 @@ class DataframeRetrieveUpdateDestroy(generics.RetrieveUpdateDestroyAPIView):
       try:
         data_list = apply_types(df, serializer.data['dtypes'])
         data_list = data_list.to_json(orient='records', date_format='iso')
-        print(data_list)
       except Exception as e:
         data_list = df.to_json(orient='records')
         parse_error['message'] = e
@@ -76,24 +75,23 @@ class DataframeRetrieveUpdateDestroy(generics.RetrieveUpdateDestroyAPIView):
     body = dict()
     try:
       body = json.loads(request.body)
-    except:
-      raise ValidationError(detail='Cannot parse request body')
+    except Exception as e:
+      raise ValidationError(detail=e)
 
 
     try:
       # Read the CSV file using Pandas
-      df = apply_types(open_file(file_path), serializer.data['dtypes'])
+      df = open_file(file_path)
     except Exception as e:
       # Handle file read error (file not found, not a CSV, etc.)
-      raise ValidationError(detail='Cannot open dataset')
+      raise ValidationError(detail=e)
 
     try:
       # Attempt parsing with the modified data type
-      df.astype(body['dtypes'], errors='raise')
+      apply_types(df, body['dtypes'])
     except Exception as e:
-      print(e)
       # Handle file parse error
-      raise ValidationError(detail='Cannot parse modified columns')
+      raise ValidationError(detail=e)
 
 
     return super().patch(request, *args, **kwargs)

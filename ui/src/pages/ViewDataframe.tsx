@@ -52,6 +52,10 @@ const DATA_TYPES = {
   complex: "Complex",
 };
 
+const number_to_signed_str = (num: any) => {
+  return num >= 0 ? `+${num}` : `${num}`;
+};
+
 export default function ViewDataframe() {
   // Get dataframe's public key from query parameters
   const { pk } = useParams();
@@ -246,12 +250,14 @@ export default function ViewDataframe() {
                 >
                   {row.getVisibleCells().map((cell) => (
                     <TableCell key={cell.id}>
-                      {cell.getValue() === true ? "True" : ""}
-                      {cell.getValue() === false ? "False" : ""}
-                      {flexRender(
-                        cell.column.columnDef.cell,
-                        cell.getContext()
-                      )}
+                      {_.isObject(cell.getValue())
+                        ? `${_.get(
+                            cell.getValue(),
+                            "real"
+                          )}${number_to_signed_str(
+                            _.get(cell.getValue(), "imag")
+                          )}j`
+                        : cell.getValue()?.toString()}
                     </TableCell>
                   ))}
                 </TableRow>
