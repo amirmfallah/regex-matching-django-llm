@@ -34,6 +34,7 @@ class DataframeRetrieveUpdateDestroy(generics.RetrieveUpdateDestroyAPIView):
 
       # Read the CSV file using Pandas
       df = pd.read_csv(file_path)
+      total_items = len(df)
       df = paginate_data(df, page, page_size)
 
       # Convert DataFrame to list of dicts and paginate
@@ -48,7 +49,6 @@ class DataframeRetrieveUpdateDestroy(generics.RetrieveUpdateDestroyAPIView):
 
 
       # Include pagination metadata in your response
-      total_items = len(data_list)
       total_pages = (total_items // page_size) + (1 if total_items % page_size > 0 else 0)
       pagination_info = {
           'total_items': total_items,
