@@ -12,6 +12,7 @@ import {
   useReactTable,
 } from "@tanstack/react-table";
 import { ChevronDown, MoreHorizontal } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -39,17 +40,21 @@ import { toast } from "@/components/ui/use-toast";
 
 const DATA_TYPES = {
   object: "Text",
-  Int64: "Big Number",
-  Int32: "Medium Number",
-  Int16: "Small Number",
-  Int8: "Extra Small Number",
+  Int64: "Nullable Big Number",
+  Int32: "Nullable Medium Number",
+  Int16: "Nullable Small Number",
+  Int8: "Nullable Extra Small Number",
+  int64: "Big Number",
+  int32: "Medium Number",
+  int16: "Small Number",
+  int8: "Extra Small Number",
   float64: "Big Float",
   float32: "Small Float",
   bool: "Boolean",
   "datetime64[ns]": "Date",
   "timedelta64[ns]": "Date with timezone",
   category: "Categorical",
-  complex: "Complex",
+  complex128: "Complex",
 };
 
 const number_to_signed_str = (num: any) => {
@@ -70,6 +75,7 @@ export default function ViewDataframe() {
 
   // Declare data table state
   const [data, setData] = React.useState([]);
+  const [memUsage, setMemUsage] = React.useState({ before: 0, after: 0 });
   const [columns, setColumns] = React.useState<ColumnDef<any>[]>([]);
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
@@ -89,7 +95,10 @@ export default function ViewDataframe() {
 
     axiosAgent.get(`dataframe/${pk}?${params}`).then((res) => {
       setData(JSON.parse(_.get(res.data, ["data"])));
-      console.log(JSON.parse(_.get(res.data, ["data"])));
+      setMemUsage({
+        after: _.get(res.data, ["memory_usage_after"]),
+        before: _.get(res.data, ["memory_usage_before"]),
+      });
       setCurrentPage({
         current_page: res.data.current_page,
         total_pages: res.data.total_pages,
@@ -187,6 +196,10 @@ export default function ViewDataframe() {
   return (
     <ScrollArea className="w-full">
       <h1 className="text-4xl font-bold">Dataframes list</h1>
+      <div className="flex gap-2">
+        <Badge>Memory usage before: {memUsage.before} bytes</Badge>
+        <Badge>Memory usage after: {memUsage.after} bytes</Badge>
+      </div>
       <div className="flex items-center py-4">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -221,6 +234,7 @@ export default function ViewDataframe() {
           View All
         </Button>
       </div>
+
       <div className="rounded-md border">
         <Table>
           <TableHeader>

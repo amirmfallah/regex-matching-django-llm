@@ -41,6 +41,8 @@ def infer_and_convert_data_types(df):
         except (ValueError, TypeError):
             pass
 
+
+
         # Attempt to convert to timedelta
         try:
             df[col] = pd.to_timedelta(df[col])
@@ -48,9 +50,17 @@ def infer_and_convert_data_types(df):
         except (ValueError, TypeError):
             pass
 
+        # Attempt to convert to complex
+        try:
+            df[col] = df[col].astype('complex128')
+            continue
+        except (ValueError, TypeError):
+            pass
+
         # Check if the column should be categorical
         if len(df[col].unique()) / len(df[col]) < 0.5:  # Example threshold for categorization
             df[col] = pd.Categorical(df[col])
+            continue
 
     return df
 
@@ -80,7 +90,7 @@ def apply_types(df, dtypes):
             continue
 
         if type == 'complex':
-            df[col] = df[col].astype('complex')
+            df[col] = df[col].astype('complex128')
             continue
 
         if type == 'category':

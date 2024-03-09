@@ -36,15 +36,18 @@ class DataframeRetrieveUpdateDestroy(generics.RetrieveUpdateDestroyAPIView):
       # Read the CSV file using Pandas
       df = open_file(file_path)
       total_items = len(df)
-      df = paginate_data(df, page, page_size)
+      memory_usage_before = df.memory_usage(index=True).sum()
 
       # Convert DataFrame to list of dicts and paginate
       parse_error = {"message": ""}
       try:
         data_list = apply_types(df, serializer.data['dtypes'])
+        memory_usage_after = data_list.memory_usage(index=True).sum()
+        data_list = paginate_data(data_list, page, page_size)
         data_list = data_list.to_json(orient='records', date_format='iso')
       except Exception as e:
         data_list = df.to_json(orient='records')
+        memory_usage_after = data_list.memory_usage(index=True).sum()
         parse_error['message'] = e
 
 
@@ -55,7 +58,9 @@ class DataframeRetrieveUpdateDestroy(generics.RetrieveUpdateDestroyAPIView):
           'total_pages': total_pages,
           'current_page': page,
           'page_size': page_size,
-          'data': data_list
+          'data': data_list,
+          'memory_usage_before': memory_usage_before,
+          'memory_usage_after': memory_usage_after
       }
 
       response = {**serializer.data, **pagination_info, **parse_error}
