@@ -121,7 +121,11 @@ export function UploadForm() {
             <FormItem>
               <FormLabel>Speadsheet File</FormLabel>
               <FormControl>
-                <Input type="file" {...fileRef} />
+                <Input
+                  type="file"
+                  accept={ACCEPTED_FILE_TYPES.join(",")}
+                  {...fileRef}
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
