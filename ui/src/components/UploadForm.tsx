@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -33,11 +34,11 @@ const formSchema = z.object({
     .refine((files) => files?.length == 1, "File is required")
     .refine(
       (files) => files?.[0]?.size <= MAX_UPLOAD_SIZE,
-      "Max image size is 3MB."
+      "Max image size is 10MB."
     )
     .refine(
       (files) => ACCEPTED_FILE_TYPES.includes(files?.[0]?.type),
-      "Only .csv format is supported."
+      "Only .csv, .xls, .xlsx format is supported."
     ),
 });
 
@@ -127,6 +128,9 @@ export function UploadForm() {
                   {...fileRef}
                 />
               </FormControl>
+              <FormDescription>
+                Only .csv, .xls, .xlsx format is supported.
+              </FormDescription>
               <FormMessage />
             </FormItem>
           )}
