@@ -41,8 +41,6 @@ def infer_and_convert_data_types(df):
         except:
             pass
 
-
-
         # Attempt to convert to timedelta
         try:
             df[col] = pd.to_timedelta(df[col])
@@ -78,11 +76,11 @@ def apply_types(df, dtypes):
             continue
 
         if type == 'datetime64[ns]':
-            df[col] = pd.to_datetime(df[col], errors='coerce')
+            df[col] = pd.to_datetime(df[col], errors='raise')
             continue
 
         if type == 'timedelta64[ns]':
-            df[col] = pd.to_timedelta(df[col], errors='coerce')
+            df[col] = pd.to_timedelta(df[col], errors='raise')
             continue
 
         if type == 'bool':
@@ -99,6 +97,9 @@ def apply_types(df, dtypes):
 
     return df
 
+# This function evaluates the range of non-null values in a column to determine the smallest suitable nullable integer type
+# (`Int8`, `Int16`, `Int32`, `Int64`) for storing the data without loss of information. This optimization is crucial for
+# minimizing memory usage while maintaining the integrity of the data.
 def convert_to_smallest_nullable_int_type(col):
     # First, drop NaN values to check the min and max of the remaining values
     min_val = col.min()
