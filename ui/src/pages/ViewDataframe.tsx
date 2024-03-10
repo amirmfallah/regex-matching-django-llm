@@ -57,6 +57,7 @@ const DATA_TYPES = {
   complex128: "Complex",
 };
 
+// convert numbers to numerical string including the postive and the negative sign
 const number_to_signed_str = (num: any) => {
   return num >= 0 ? `+${num}` : `${num}`;
 };

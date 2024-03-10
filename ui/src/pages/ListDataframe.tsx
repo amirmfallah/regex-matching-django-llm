@@ -64,7 +64,7 @@ export default function ListDataframe() {
     });
   };
 
-  // Create table dataframe columns
+  // Create table dataframe columns [id, dataframe title, acions]
   const columns: ColumnDef<any>[] = [
     {
       id: "select",
@@ -125,6 +125,7 @@ export default function ListDataframe() {
     },
   ];
 
+  // Use Table Stack react library to show data table
   const table = useReactTable({
     data,
     columns,

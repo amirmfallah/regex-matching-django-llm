@@ -17,7 +17,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 
-const MAX_UPLOAD_SIZE = 1024 * 1024 * 3;
+const MAX_UPLOAD_SIZE = 1024 * 1024 * 10;
 const ACCEPTED_FILE_TYPES = [
   "text/csv",
   "application/vnd.ms-excel",

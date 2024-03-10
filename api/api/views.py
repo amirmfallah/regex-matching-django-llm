@@ -9,16 +9,19 @@ from rest_framework.exceptions import NotFound, ValidationError
 import pandas as pd
 import json
 
+# Dataframe APIViews for Create and List operations
 class DataframeListCreateView(generics.ListCreateAPIView):
   queryset = DataframeModel.objects.all()
   serializer_class = DataframeSerializer
 
 
+# slice the dataset based on the pagination variables
 def paginate_data(data, page, page_size):
     start = (page - 1) * page_size
     end = page * page_size
     return data[start:end]
 
+# Dataframe APIViews for Retrieve, Update, and Delete operations
 class DataframeRetrieveUpdateDestroy(generics.RetrieveUpdateDestroyAPIView):
   queryset = DataframeModel.objects.all()
   serializer_class = DataframeSerializer
