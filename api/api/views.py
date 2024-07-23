@@ -83,7 +83,7 @@ class DataframeFindAndReplaceView(views.APIView):
                 return Response({"error": "Unsupported file type"}, status=status.HTTP_400_BAD_REQUEST)
 
             column_names = df.columns.tolist()
-            sample_rows = df.sample(n=10, random_state=1).to_dict(orient='records')
+            sample_rows = df.sample(n=10, random_state=1).to_markdown()
       
             response = client.chat.completions.create(
                 model="gpt-4o",
@@ -92,21 +92,23 @@ class DataframeFindAndReplaceView(views.APIView):
                         You will receive an input string and a list of column names. 
                         Generate a regex pattern that matches the description in the input string for each column name.
                         Also, provide the replacement value specified in the input. \n
-                       
-                        {"$schema":"http://json-schema.org/draft-04/schema#","type":"array","items":[{"type":"object","properties":{"column":{"type":"string"},"regex":{"type":"string"},"replacement":{"type":"string"}},"required":["column","regex","replacement"]}]} \n
-                        You MUST answer with a JSON object that matches the JSON schema above.
-                        Only include columns that are affected.
-                        Your response should only contain the JSON array.
-                    """},
+                        Only include columns that are affected. \n
+                        Your response should only contain the JSON array.\n\n
+                        Below are sample rows from the dataset: \n """ +
+                        sample_rows + 
+                        '{"result": [{"column": "column_name", "regex": "regex_pattern", "replacement": "replacement"}]} \n You MUST answer with a JSON object that matches the JSON schema above. '
+                    },
                     {"role": "user", "content": f"Input string: {input_string}, Column names: {', '.join(column_names)}"}
                 ],  
+                response_format={ "type": "json_object" }
             )
 
             response = response.choices[0].message.content.strip()
+            print(response)
             json_output = json.loads(response)
             print(json_output)
 
-            for item in json_output:
+            for item in json_output['result']:
                 column = item['column']
                 regex = item['regex']
                 replacement = item['replacement']
