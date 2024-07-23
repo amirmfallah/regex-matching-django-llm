@@ -1,5 +1,3 @@
-import * as React from "react";
-import * as _ from "lodash-es";
 import {
   ColumnDef,
   ColumnFiltersState,
@@ -11,17 +9,15 @@ import {
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table";
-import { ChevronDown, MoreHorizontal } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import * as _ from "lodash-es";
+import { ChevronDown, Loader2, Undo2 } from "lucide-react";
+import * as React from "react";
 
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
@@ -34,32 +30,19 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { axiosAgent } from "@/lib/axios";
-import { useNavigate, useParams } from "react-router-dom";
 import { ScrollArea } from "@radix-ui/react-scroll-area";
-import { toast } from "@/components/ui/use-toast";
-
-const DATA_TYPES = {
-  object: "Text",
-  Int64: "Nullable Big Number",
-  Int32: "Nullable Medium Number",
-  Int16: "Nullable Small Number",
-  Int8: "Nullable Extra Small Number",
-  int64: "Big Number",
-  int32: "Medium Number",
-  int16: "Small Number",
-  int8: "Extra Small Number",
-  float64: "Big Float",
-  float32: "Small Float",
-  bool: "Boolean",
-  "datetime64[ns]": "Date",
-  "timedelta64[ns]": "Date with timezone",
-  category: "Categorical",
-  complex128: "Complex",
-};
+import { useNavigate, useParams } from "react-router-dom";
+import { Input } from "@/components/ui/input";
+import { Separator } from "@radix-ui/react-select";
+import { SubmitHandler, useForm } from "react-hook-form";
 
 // convert numbers to numerical string including the postive and the negative sign
 const number_to_signed_str = (num: any) => {
   return num >= 0 ? `+${num}` : `${num}`;
+};
+
+type FindFormInput = {
+  input_string: string;
 };
 
 export default function ViewDataframe() {
@@ -76,7 +59,6 @@ export default function ViewDataframe() {
 
   // Declare data table state
   const [data, setData] = React.useState([]);
-  const [memUsage, setMemUsage] = React.useState({ before: 0, after: 0 });
   const [columns, setColumns] = React.useState<ColumnDef<any>[]>([]);
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
@@ -96,19 +78,16 @@ export default function ViewDataframe() {
 
     axiosAgent.get(`dataframe/${pk}?${params}`).then((res) => {
       setData(JSON.parse(_.get(res.data, ["data"])));
-      setMemUsage({
-        after: _.get(res.data, ["memory_usage_after"]),
-        before: _.get(res.data, ["memory_usage_before"]),
-      });
       setCurrentPage({
         current_page: res.data.current_page,
         total_pages: res.data.total_pages,
       });
-      const dtypes = _.get(res.data, ["dtypes"]);
+      const columns = _.get(res.data, ["columns"]);
+      console.log(columns);
 
       // Setup dynamic columns based on the dataframe
       setColumns([]);
-      for (const [key, value] of Object.entries(dtypes)) {
+      columns.forEach((key: string) => {
         setColumns((columns) => [
           ...columns,
           {
@@ -116,28 +95,6 @@ export default function ViewDataframe() {
             header: () => (
               <p className="flex gap-2 items-center">
                 <span>{key}</span>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" className="h-6 w-6 p-0">
-                      <span className="sr-only">Open menu</span>
-                      <MoreHorizontal className="h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuLabel>Data Types</DropdownMenuLabel>
-                    <DropdownMenuSeparator />
-                    {/* Handle data type change button event */}
-                    {Object.keys(DATA_TYPES).map((_key, index) => (
-                      <DropdownMenuItem
-                        key={index}
-                        onClick={() => updateDataType(_key, key, dtypes)}
-                        className={_key == value ? "bg-slate-100" : ""}
-                      >
-                        {_.get(DATA_TYPES, _key)}
-                      </DropdownMenuItem>
-                    ))}
-                  </DropdownMenuContent>
-                </DropdownMenu>
               </p>
             ),
             cell: ({ row }) => (
@@ -145,7 +102,7 @@ export default function ViewDataframe() {
             ),
           },
         ]);
-      }
+      });
     });
   };
 
@@ -153,25 +110,6 @@ export default function ViewDataframe() {
   React.useEffect(() => {
     loadData();
   }, [page, pageSize, pk]);
-
-  const updateDataType = (label: string, columnKey: string, dtypes: any) => {
-    _.set(dtypes, columnKey, label);
-    axiosAgent
-      .patch(`dataframe/${pk}/`, { dtypes })
-      .then(() => {
-        loadData();
-        toast({
-          title: "Datatype successfully changed.",
-          description: "Congrats!",
-        });
-      })
-      .catch(() => {
-        toast({
-          title: "Datatype update failed",
-          description: `${columnKey} cannot be converted to ${label}`,
-        });
-      });
-  };
 
   const table = useReactTable({
     data,
@@ -194,14 +132,23 @@ export default function ViewDataframe() {
     pageCount: currentPage?.total_pages ?? -1,
   });
 
+  // Initialize find and replace form
+  const {
+    register,
+    handleSubmit,
+    formState: { isSubmitting },
+  } = useForm<FindFormInput>();
+  const onSubmit: SubmitHandler<FindFormInput> = async (data) => {
+    const response = await axiosAgent.post(`dataframe/${pk}/find/`, data);
+    if (response.status == 200) {
+      loadData();
+    }
+  };
+
   return (
     <ScrollArea className="w-full">
-      <h1 className="text-4xl font-bold">Dataframes list</h1>
-      <div className="flex gap-2">
-        <Badge>Memory usage before: {memUsage.before} bytes</Badge>
-        <Badge>Memory usage after: {memUsage.after} bytes</Badge>
-      </div>
       <div className="flex items-center py-4">
+        <h1 className="text-4xl font-bold mr-auto">Dataframes list</h1>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="outline" className="ml-auto">
@@ -235,6 +182,33 @@ export default function ViewDataframe() {
           View All
         </Button>
       </div>
+
+      <Separator className="my-4" />
+
+      <form
+        onSubmit={handleSubmit(onSubmit)}
+        className="mb-4 flex items-center gap-2"
+      >
+        <Input
+          placeholder="Find and replace"
+          {...register("input_string")}
+          required
+        />
+        <Button className="gap-2" type="submit" disabled={isSubmitting}>
+          {isSubmitting ? <Loader2 className="animate-spin h-4 w-4" /> : null}
+          Find
+        </Button>
+        <Button
+          variant="secondary"
+          type="button"
+          onClick={async () => {
+            await axiosAgent.post(`dataframe/${pk}/undo/`);
+            loadData();
+          }}
+        >
+          <Undo2 />
+        </Button>
+      </form>
 
       <div className="rounded-md border">
         <Table>

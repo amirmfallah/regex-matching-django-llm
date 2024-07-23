@@ -11,7 +11,7 @@ import { Toaster } from "@/components/ui/toaster";
 const Dashboard = () => {
   return (
     <div className="flex flex-col space-y-4 justify-center items-center pt-12">
-      <div className="p-4 w-full  md:w-1/2">
+      <div className="p-4 w-full  md:max-w-4xl">
         <Outlet />
       </div>
       <Toaster />
