@@ -147,7 +147,7 @@ export default function ListDataframe() {
 
   return (
     <ScrollArea className="w-full">
-      <h1 className="text-4xl font-bold">Dataframes list</h1>
+      <h1 className="text-4xl font-bold">Regex Pattern Matching</h1>
       <div className="flex items-center py-4">
         <Input
           placeholder="Filter titles..."

@@ -35,17 +35,21 @@ import { useNavigate, useParams } from "react-router-dom";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@radix-ui/react-select";
 import { SubmitHandler, useForm } from "react-hook-form";
+import { useToast } from "@/components/ui/use-toast";
 
-// convert numbers to numerical string including the postive and the negative sign
+// Convert numbers to numerical string including the positive and the negative sign
 const number_to_signed_str = (num: any) => {
   return num >= 0 ? `+${num}` : `${num}`;
 };
 
+// Define the form input type
 type FindFormInput = {
   input_string: string;
 };
 
 export default function ViewDataframe() {
+  const { toast } = useToast();
+
   // Get dataframe's public key from query parameters
   const { pk } = useParams();
 
@@ -69,7 +73,7 @@ export default function ViewDataframe() {
   const [rowSelection, setRowSelection] = React.useState({});
   const navigate = useNavigate();
 
-  // Load tables data from server
+  // Load table data from the server
   const loadData = () => {
     const params = new URLSearchParams({
       page: page.toString(),
@@ -77,13 +81,13 @@ export default function ViewDataframe() {
     });
 
     axiosAgent.get(`dataframe/${pk}?${params}`).then((res) => {
+      // Set data and pagination information
       setData(JSON.parse(_.get(res.data, ["data"])));
       setCurrentPage({
         current_page: res.data.current_page,
         total_pages: res.data.total_pages,
       });
       const columns = _.get(res.data, ["columns"]);
-      console.log(columns);
 
       // Setup dynamic columns based on the dataframe
       setColumns([]);
@@ -106,11 +110,12 @@ export default function ViewDataframe() {
     });
   };
 
-  // Fetch table's data on component mount, and when pagination states change
+  // Fetch table data on component mount and when pagination states change
   React.useEffect(() => {
     loadData();
   }, [page, pageSize, pk]);
 
+  // Initialize the table using React Table
   const table = useReactTable({
     data,
     columns,
@@ -138,17 +143,37 @@ export default function ViewDataframe() {
     handleSubmit,
     formState: { isSubmitting },
   } = useForm<FindFormInput>();
+
+  // Define the submit handler for the find and replace form
   const onSubmit: SubmitHandler<FindFormInput> = async (data) => {
-    const response = await axiosAgent.post(`dataframe/${pk}/find/`, data);
-    if (response.status == 200) {
+    try {
+      await axiosAgent.post(`dataframe/${pk}/find/`, data);
       loadData();
+    } catch (error) {
+      // Handle errors
+      toast({
+        title: "Find and replace failed",
+        description: "An error occurred",
+      });
+    }
+  };
+
+  const onUndo = async () => {
+    try {
+      await axiosAgent.post(`dataframe/${pk}/undo/`);
+      loadData();
+    } catch (error) {
+      toast({
+        title: "Undo failed",
+        description: "An error occurred",
+      });
     }
   };
 
   return (
     <ScrollArea className="w-full">
       <div className="flex items-center py-4">
-        <h1 className="text-4xl font-bold mr-auto">Dataframes list</h1>
+        <h1 className="text-4xl font-bold mr-auto">Regex Pattern Matching</h1>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="outline" className="ml-auto">
@@ -198,14 +223,7 @@ export default function ViewDataframe() {
           {isSubmitting ? <Loader2 className="animate-spin h-4 w-4" /> : null}
           Find
         </Button>
-        <Button
-          variant="secondary"
-          type="button"
-          onClick={async () => {
-            await axiosAgent.post(`dataframe/${pk}/undo/`);
-            loadData();
-          }}
-        >
+        <Button variant="secondary" type="button" onClick={onUndo}>
           <Undo2 />
         </Button>
       </form>

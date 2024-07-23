@@ -9,6 +9,7 @@ import os
 from .models import DataframeModel
 from .serializers import DataframeSerializer
 
+# Initialize the OpenAI API client
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY", default=""))
 
 # Dataframe APIViews for Create and List operations
@@ -32,9 +33,11 @@ class DataframeRetrieveUpdateDestroy(generics.RetrieveUpdateDestroyAPIView):
         file_path = instance.file.path
         serializer = DataframeSerializer(instance)
         try:
+            # Get the page and page_size query parameters
             page = int(request.query_params.get('page', 1))
             page_size = int(request.query_params.get('page_size', 10))
 
+            # Read the file based on the file extension
             if file_path.endswith('.csv'):
                 df = pd.read_csv(file_path)
             elif file_path.endswith('.xls') or file_path.endswith('.xlsx'):
@@ -42,6 +45,7 @@ class DataframeRetrieveUpdateDestroy(generics.RetrieveUpdateDestroyAPIView):
             else:
                 return Response({"error": "Unsupported file type"}, status=status.HTTP_400_BAD_REQUEST)      
 
+            # Paginate the data and convert to JSON
             data_list = paginate_data(df, page, page_size)
             data_list = data_list.to_json(orient='records', date_format='iso')
 
@@ -68,13 +72,16 @@ class DataframeRetrieveUpdateDestroy(generics.RetrieveUpdateDestroyAPIView):
 class DataframeFindAndReplaceView(views.APIView):
     def post(self, request, pk, format=None):
         try:
+            # Get the dataframe object and file path
             dataframe = DataframeModel.objects.get(pk=pk)
             file_path = dataframe.file.path
             input_string = request.data.get('input_string')
 
+            # Read the prompt from request body
             if not input_string:
                 return Response({"error": "No input string provided"}, status=status.HTTP_400_BAD_REQUEST)
 
+            # Read the file based on the file extension
             if file_path.endswith('.csv'):
                 df = pd.read_csv(file_path)
             elif file_path.endswith('.xls') or file_path.endswith('.xlsx'):
@@ -82,9 +89,12 @@ class DataframeFindAndReplaceView(views.APIView):
             else:
                 return Response({"error": "Unsupported file type"}, status=status.HTTP_400_BAD_REQUEST)
 
+            # Sample rows for context
             column_names = df.columns.tolist()
             sample_rows = df.sample(n=10, random_state=1).to_markdown()
-      
+
+
+            # Using OpenAI's ChatGPT to generate regex patterns for columns
             response = client.chat.completions.create(
                 model="gpt-4o",
                 messages=[
@@ -103,10 +113,9 @@ class DataframeFindAndReplaceView(views.APIView):
                 response_format={ "type": "json_object" }
             )
 
+            # Parsing the response from OpenAI to extract the JSON object
             response = response.choices[0].message.content.strip()
-            print(response)
             json_output = json.loads(response)
-            print(json_output)
 
             for item in json_output['result']:
                 column = item['column']
@@ -114,6 +123,7 @@ class DataframeFindAndReplaceView(views.APIView):
                 replacement = item['replacement']
                 df[column] = df[column].str.replace(regex, replacement, regex=True)
 
+            # Save the updated dataframe to a new file
             timestamp = timezone.now().strftime('%Y%m%d%H%M%S')
             new_file_path = f"{file_path.rsplit('.', 1)[0]}_{timestamp}.{file_path.rsplit('.', 1)[1]}"
             if file_path.endswith('.csv'):
