@@ -1,19 +1,20 @@
-from django.shortcuts import render
-from rest_framework import viewsets, status, generics
+from rest_framework import status, generics, views
+from rest_framework.response import Response
+from rest_framework.exceptions import ValidationError
+import json
+import pandas as pd
+from openai import OpenAI
+from django.utils import timezone
+import os
 from .models import DataframeModel
 from .serializers import DataframeSerializer
-from .utils.dtypes import apply_types
-from .utils.spreadsheets import open_file
-from rest_framework.response import Response
-from rest_framework.exceptions import NotFound, ValidationError
-import pandas as pd
-import json
+
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY", default=""))
 
 # Dataframe APIViews for Create and List operations
 class DataframeListCreateView(generics.ListCreateAPIView):
-  queryset = DataframeModel.objects.all()
-  serializer_class = DataframeSerializer
-
+    queryset = DataframeModel.objects.all()
+    serializer_class = DataframeSerializer
 
 # slice the dataset based on the pagination variables
 def paginate_data(data, page, page_size):
@@ -23,85 +24,127 @@ def paginate_data(data, page, page_size):
 
 # Dataframe APIViews for Retrieve, Update, and Delete operations
 class DataframeRetrieveUpdateDestroy(generics.RetrieveUpdateDestroyAPIView):
-  queryset = DataframeModel.objects.all()
-  serializer_class = DataframeSerializer
-  lookup_field = "pk"
+    queryset = DataframeModel.objects.all()
+    serializer_class = DataframeSerializer
 
-  def retrieve(self, request, *args, **kwargs):
-    instance = self.get_object()
-    file_path = instance.file.path
-    print(file_path)
-    serializer = DataframeSerializer(instance)
-    try:
-      # Get pagination parameters from the request
-      page = int(request.query_params.get('page', 1))
-      page_size = int(request.query_params.get('page_size', 10))
+    def retrieve(self, request, *args, **kwargs):
+        instance = self.get_object()
+        file_path = instance.file.path
+        serializer = DataframeSerializer(instance)
+        try:
+            page = int(request.query_params.get('page', 1))
+            page_size = int(request.query_params.get('page_size', 10))
 
-      # Read the CSV file using Pandas
-      df = open_file(file_path)
-      total_items = len(df)
-      memory_usage_before = df.memory_usage(index=True).sum()
+            if file_path.endswith('.csv'):
+                df = pd.read_csv(file_path)
+            elif file_path.endswith('.xls') or file_path.endswith('.xlsx'):
+                df = pd.read_excel(file_path)
+            else:
+                return Response({"error": "Unsupported file type"}, status=status.HTTP_400_BAD_REQUEST)      
 
-      # Convert DataFrame to list of dicts and paginate
-      parse_error = {"message": ""}
-      try:
-        data_list = apply_types(df, serializer.data['dtypes'])
-        memory_usage_after = data_list.memory_usage(index=True).sum()
-        data_list = paginate_data(data_list, page, page_size)
-        data_list = data_list.to_json(orient='records', date_format='iso')
-      except Exception as e:
-        data_list = df.to_json(orient='records')
-        memory_usage_after = data_list.memory_usage(index=True).sum()
-        parse_error['message'] = e
+            data_list = paginate_data(df, page, page_size)
+            data_list = data_list.to_json(orient='records', date_format='iso')
 
+            column_names = list(df.columns)
 
-      # Include pagination metadata in your response
-      total_pages = (total_items // page_size) + (1 if total_items % page_size > 0 else 0)
-      pagination_info = {
-          'total_items': total_items,
-          'total_pages': total_pages,
-          'current_page': page,
-          'page_size': page_size,
-          'data': data_list,
-          'memory_usage_before': memory_usage_before,
-          'memory_usage_after': memory_usage_after
-      }
+            total_items = len(df)
+            total_pages = (total_items // page_size) + (1 if total_items % page_size > 0 else 0)
+            pagination_info = {
+                'total_items': total_items,
+                'total_pages': total_pages,
+                'current_page': page,
+                'page_size': page_size,
+                'data': data_list,
+                'columns': column_names
+            }
 
-      response = {**serializer.data, **pagination_info, **parse_error}
-      # You might want to return the DataFrame as JSON in the response
-      return Response(response, status=status.HTTP_200_OK)
+            response = {**serializer.data, **pagination_info}
+            return Response(response, status=status.HTTP_200_OK)
 
-    except Exception as e:
-      print(e)
-      # Handle file read error (file not found, not a CSV, etc.)
-      raise ValidationError(detail=e)
+        except Exception as e:
+            print(e)
+            raise ValidationError(detail=e)
 
-  def patch(self, request, *args, **kwargs):
-    instance = self.get_object()
-    file_path = instance.file.path
-    serializer = DataframeSerializer(instance)
+class DataframeFindAndReplaceView(views.APIView):
+    def post(self, request, pk, format=None):
+        try:
+            dataframe = DataframeModel.objects.get(pk=pk)
+            file_path = dataframe.file.path
+            input_string = request.data.get('input_string')
 
-    # Parse request body as JSON
-    body = dict()
-    try:
-      body = json.loads(request.body)
-    except Exception as e:
-      raise ValidationError(detail=e)
+            if not input_string:
+                return Response({"error": "No input string provided"}, status=status.HTTP_400_BAD_REQUEST)
 
+            if file_path.endswith('.csv'):
+                df = pd.read_csv(file_path)
+            elif file_path.endswith('.xls') or file_path.endswith('.xlsx'):
+                df = pd.read_excel(file_path)
+            else:
+                return Response({"error": "Unsupported file type"}, status=status.HTTP_400_BAD_REQUEST)
 
-    try:
-      # Read the CSV file using Pandas
-      df = open_file(file_path)
-    except Exception as e:
-      # Handle file read error (file not found, not a CSV, etc.)
-      raise ValidationError(detail=e)
+            column_names = df.columns.tolist()
+            sample_rows = df.sample(n=10, random_state=1).to_dict(orient='records')
+      
+            response = client.chat.completions.create(
+                model="gpt-4o",
+                messages=[
+                    {"role": "system", "content": """
+                        You will receive an input string and a list of column names. 
+                        Generate a regex pattern that matches the description in the input string for each column name.
+                        Also, provide the replacement value specified in the input. \n
+                       
+                        {"$schema":"http://json-schema.org/draft-04/schema#","type":"array","items":[{"type":"object","properties":{"column":{"type":"string"},"regex":{"type":"string"},"replacement":{"type":"string"}},"required":["column","regex","replacement"]}]} \n
+                        You MUST answer with a JSON object that matches the JSON schema above.
+                        Only include columns that are affected.
+                        Your response should only contain the JSON array.
+                    """},
+                    {"role": "user", "content": f"Input string: {input_string}, Column names: {', '.join(column_names)}"}
+                ],  
+            )
 
-    try:
-      # Attempt parsing with the modified data type
-      apply_types(df, body['dtypes'])
-    except Exception as e:
-      # Handle file parse error
-      raise ValidationError(detail=e)
+            response = response.choices[0].message.content.strip()
+            json_output = json.loads(response)
+            print(json_output)
 
+            for item in json_output:
+                column = item['column']
+                regex = item['regex']
+                replacement = item['replacement']
+                df[column] = df[column].str.replace(regex, replacement, regex=True)
 
-    return super().patch(request, *args, **kwargs)
+            timestamp = timezone.now().strftime('%Y%m%d%H%M%S')
+            new_file_path = f"{file_path.rsplit('.', 1)[0]}_{timestamp}.{file_path.rsplit('.', 1)[1]}"
+            if file_path.endswith('.csv'):
+                df.to_csv(new_file_path, index=False)
+            elif file_path.endswith('.xls') or file_path.endswith('.xlsx'):
+                df.to_excel(new_file_path, index=False)
+
+            dataframe.file.name = new_file_path
+            dataframe.save()
+
+            return Response({
+                "received_string": input_string,
+                "dataframe_id": dataframe.id,
+                "columns": column_names,
+                "chatgpt_response": json_output,
+                "updated_dataframe": df.to_dict(orient='records')
+            }, status=status.HTTP_200_OK)
+
+        except DataframeModel.DoesNotExist:
+            return Response({"error": "Dataframe not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+class DataframeUndoView(views.APIView):
+    def post(self, request, pk, format=None):
+        try:
+            dataframe = DataframeModel.objects.get(pk=pk)
+            dataframe.undo()
+            return Response({"message": "Undo successful", "dataframe_id": dataframe.id}, status=status.HTTP_200_OK)
+        except DataframeModel.DoesNotExist:
+            return Response({"error": "Dataframe not found"}, status=status.HTTP_404_NOT_FOUND)
+        except ValueError as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
