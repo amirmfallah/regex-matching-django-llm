@@ -1,20 +1,31 @@
-# Django React App
+# Web Application for Regex Pattern Matching and Replacement
 
-This project integrates Django as the backend framework with a React frontend, focusing on processing and displaying data with an emphasis on data type inference and conversion for datasets. The backend leverages Python and Pandas for data processing, ensuring efficient handling of CSV and Excel files, data type inference, and conversion to appropriate data types. The frontend, built with React, provides a user-friendly interface for uploading datasets, submitting them for processing, and displaying the processed data.
+This project integrates Django as the backend framework with a React frontend, focusing on processing and displaying data with an emphasis on regex pattern matching and replacement using natural language input. The backend leverages Python and Pandas for data processing, ensuring efficient handling of CSV and Excel files. The frontend, built with React, provides a user-friendly interface for uploading datasets, describing patterns in natural language, and displaying the processed data.
 
 ## Demo
 
-Experience the live demo of the application at [https://django-react-app-roan.vercel.app/](https://django-react-app-roan.vercel.app/).
+Experience the live demo of the application at [https://regex-matching-django-llm.vercel.app/](https://regex-matching-django-llm.vercel.app/).
 
 ## Project Overview
 
 The project comprises three main parts:
 
-1. **Pandas Data Type Inference and Conversion (Backend Task):** Develop a Python script using Pandas to infer and convert data types in a dataset. The script addresses common issues such as columns defaulting to 'object' dtype and incorrect type inference, optimizing for performance and handling large files.
+1. **Backend Development with Django**:
 
-2. **Django Backend Development:** Setup of a Django project incorporating the Python script for data processing, creation of models, views, URLs, and a backend API to handle data processing logic and user interactions.
+   - Set up a Django project for data processing.
+   - Implement models, views, and URLs to handle data processing logic and user interactions.
+   - Create an API endpoint to receive natural language input, convert it to regex using an LLM, and handle the replacement operations.
 
-3. **Frontend Development using React:** Development of a frontend application that allows users to upload data, submit it for processing, and display the processed data. It offers an option to override inferred data types.
+2. **Frontend Development using React**:
+
+   - Develop a user-friendly interface allowing users to upload CSV/Excel files.
+   - Provide input fields for users to describe the pattern they want to match in natural language and specify the replacement value.
+   - Display the processed data with the applied replacements in the text columns.
+
+3. **LLM Integration**:
+   - Use a Large Language Model (LLM) to convert natural language input into a regex pattern.
+   - Ensure the LLM can handle various natural language descriptions accurately.
+   - Demonstrate creativity by using LLM for two additional data transformations.
 
 ## Setup and Running
 
@@ -34,6 +45,10 @@ The project comprises three main parts:
 2. Install the required dependencies:
    ```
    pip install -r requirements.txt
+   ```
+3. Rename `.env.example` to `.env` and configure the necessary environment variables:
+   ```
+   OPENAI_API_KEY="xxxx"
    ```
 
 ### Database Setup
@@ -57,7 +72,7 @@ Start the Django development server:
 python manage.py runserver
 ```
 
-The frontend will be available at `http://localhost:8000/`.
+The backend will be available at `http://localhost:8000/`.
 
 ### Frontend Setup
 
@@ -69,7 +84,7 @@ The frontend will be available at `http://localhost:8000/`.
    ```
    npm install
    ```
-3. Rename `.env.local.example` to `.env.local` and configure the api url:
+3. Rename `.env.local.example` to `.env.local` and configure the API URL:
    ```
    VITE_API_BASE=http://127.0.0.1:8000/
    ```
@@ -86,32 +101,67 @@ The frontend will be available at `http://localhost:5173/`.
 
 ## Additional Notes
 
-This project aims to provide a comprehensive solution to data type inference and conversion, ensuring that the application is scalable, maintainable, and user-friendly. For best practices, the code is written to be clean, maintainable, and well-documented, including comprehensive error handling and validations in both the backend and frontend.
+This project aims to provide a comprehensive solution for regex pattern matching and replacement using natural language input. The application is designed to be scalable, maintainable, and user-friendly. For best practices, the code is written to be clean, maintainable, and well-documented, including comprehensive error handling and validations in both the backend and frontend.
 
-### Data Conversion Algorithm
+### Using OpenAI's ChatGPT to Generate Regex Patterns for Columns
 
-Data conversion mostly take place in the `api/api/utils/dtypes.py` module following the instructions below:
+The application leverages OpenAI's ChatGPT to convert natural language descriptions into regex patterns. Here’s how the prompt is structured:
 
-1. **Skip Columns with Only Missing Values**: The algorithm initially checks if a column contains only missing values (`NaN`). If so, it skips the column, avoiding unnecessary processing.
+1. **System Message**:
 
-2. **Boolean Conversion**: If a column's unique, non-null values are a subset of `{True, False}`, it's converted to boolean type. This step simplifies the representation of binary data.
+   - The system message sets the context for the model, instructing it on how to respond.
+   - It specifies the task: generating regex patterns based on an input string and a list of column names.
+   - It also instructs the model to provide the replacement value and to only include affected columns.
+   - The response should strictly be in JSON format, containing an array of objects where each object specifies a column name, a regex pattern, and a replacement value.
 
-3. **Numeric Conversion**:
+2. **User Message**:
+   - The user message provides specific input for the model to process. It includes:
+     - An input string that describes the pattern to be matched.
+     - A list of column names to be processed.
 
-   - The function first tries to convert the column to a numeric data type (`int` or `float`) using `pd.to_numeric` with `errors='coerce'`. If the conversion is successful (i.e., not all values are `NaN` after conversion), further processing is done to optimize the numeric type.
-   - For floating-point numbers, it attempts to downcast the type to the smallest float type (`float32` or `float64`) that can represent the data without loss of information. If the data does not contain any null values, it further tries to downcast to the smallest integer type.
-   - For columns with null values, it uses a custom function `convert_to_smallest_nullable_int_type` to determine and apply the most appropriate nullable integer type.
+```python
+# Using OpenAI's ChatGPT to generate regex patterns for columns
+response = client.chat.completions.create(
+    model="gpt-4o",
+    messages=[
+        {"role": "system", "content": """
+            You will receive an input string and a list of column names.
+            Generate a regex pattern that matches the description in the input string for each column name.
+            Also, provide the replacement value specified in the input. \n
+            Only include columns that are affected. \n
+            Your response should only contain the JSON array.\n\n
+            Below are sample rows from the dataset: \n """ +
+            sample_rows +
+            '{"result": [{"column": "column_name", "regex": "regex_pattern", "replacement": "replacement"}]} \n You MUST answer with a JSON object that matches the JSON schema above. '
+        },
+        {"role": "user", "content": f"Input string: {input_string}, Column names: {', '.join(column_names)}"}
+    ],
+    response_format={ "type": "json_object" }
+)
+```
 
-4. **Datetime and Timedelta Conversion**: The function attempts to convert columns to `datetime` or `timedelta` types using `pd.to_datetime` and `pd.to_timedelta`, respectively. These conversions allow for more efficient and intuitive handling of time series data.
+### Example Scenario
 
-5. **Complex Number Conversion**: It tries to convert columns to complex numbers (`complex128`) if applicable. This step is useful for datasets that include complex numerical data.
+**Before**:
 
-6. **Categorical Conversion**: If a significant portion of a column's values are unique (less than 50% in this example), the column is converted to a categorical type. This conversion is beneficial for columns with a limited set of repeating values, reducing memory usage and potentially improving performance.
+| name            | email                        | mobile_number        | phone_number         | address                                                      |
+| --------------- | ---------------------------- | -------------------- | -------------------- | ------------------------------------------------------------ |
+| Danny Hernandez | shensley@yahoo.com           | 187-990-3522         | +1-697-277-9832x6358 | 99647 Jamie Gateway Apt. 751 <br> East Cynthiafurt, RI 34838 |
+| Danielle Thomas | ckelly@yahoo.com             | +1-279-009-2083x137  | 468-561-7340x612     | 48169 Anne Prairie Suite 005 <br> Burchstad, SD 98206        |
+| James Smith     | rachael99@norris-walker.info | (423)763-6393x44102  | 668.105.1935         | 51502 Scott Road Suite 856 <br> Gomezville, CA 87300         |
+| Tiffany Lewis   | lsmith@gmail.com             | 001-636-413-9972x996 | 783.866.3066         | 5138 Martin Locks <br> Maldonadoborough, PA 47211            |
+| Samantha Miller | twilliams@yahoo.com          | 001-997-038-3943     | 351.971.4889         | 16073 Brewer Pass Apt. 128 <br> Port Richardside, AR 45166   |
 
-7. **Type Application for Stored Data**: The `apply_types` function is designed to reapply the inferred data types to a DataFrame based on a provided mapping (`dtypes`). This is particularly useful when loading datasets from storage, ensuring that the data types are consistent with previous processing steps.
+**User Input**:
 
-## Deliverables
+- **Natural Language**: "Remove numbers from address column, replace mobile numbers with REDACTED, and remove domains from email column"
 
-- **Source Code:** The complete source code is available in this Git repository.
-- **README File:** This README.md file includes instructions for setting up and running the application, along with additional notes about the project.
-- **Demo Video:** A short video demonstrating the web app in action is provided through the project overview.
+**After**:
+
+| name            | email     | mobile_number | phone_number         | address                                      |
+| --------------- | --------- | ------------- | -------------------- | -------------------------------------------- |
+| Danny Hernandez | shensley  | REDACTED      | +1-697-277-9832x6358 | Jamie Gateway Apt. <br> East Cynthiafurt, RI |
+| Danielle Thomas | ckelly    | REDACTED      | 468-561-7340x612     | Anne Prairie Suite <br> Burchstad, SD        |
+| James Smith     | rachael99 | REDACTED      | 668.105.1935         | Scott Road Suite <br> Gomezville, CA         |
+| Tiffany Lewis   | lsmith    | REDACTED      | 783.866.3066         | Martin Locks <br> Maldonadoborough, PA       |
+| Samantha Miller | twilliams | REDACTED      | 351.971.4889         | Brewer Pass Apt. <br> Port Richardside, AR   |

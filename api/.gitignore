@@ -59,4 +59,4 @@ coverage.xml
 docs/_build/
 
 # Environment 
-.env*
+.env
