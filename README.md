@@ -2,14 +2,6 @@
 
 This project integrates Django as the backend framework with a React frontend, focusing on processing and displaying data with an emphasis on regex pattern matching and replacement using natural language input. The backend leverages Python and Pandas for data processing, ensuring efficient handling of CSV and Excel files. The frontend, built with React, provides a user-friendly interface for uploading datasets, describing patterns in natural language, and displaying the processed data.
 
-## Demo
-
-Experience the live demo of the application at [https://regex-matching-django-llm.vercel.app/](https://regex-matching-django-llm.vercel.app/).
-
-
-https://github.com/user-attachments/assets/735da774-e3d5-45c8-b312-0356c1125256
-
-
 ## Project Overview
 
 The project comprises three main parts:
